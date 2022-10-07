@@ -1,5 +1,30 @@
 version: 2.1
 jobs:
+  test:
+    working_directory: ~/repo
+    docker:
+      - image: circleci/node:12-browsers
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      - restore_cache:
+          key: dependency-cache-{{ checksum "package.json" }}
+      
+      - run: 
+          name: Install Dependencies
+          command: npm install
+
+      - save_cache:
+          key: dependency-cache-{{ checksum "package.json" }}
+          paths:
+            - node_modules
+
+      - run:
+          name: Run Tests
+          command: npm test
+          no_output_timeout: 30m
+
   build:
     working_directory: ~/repo
     docker:
@@ -41,9 +66,12 @@ jobs:
               aws s3 sync build s3://sinmi-test-bucket --delete --exact-timestamps;
             fi
 workflows:
-  build_and_deploy:
+  test_build_deploy:
     jobs:
+      - test:
       - build:
+          requires:
+            - test
           filters:
             branches:
               only:
